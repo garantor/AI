@@ -20,6 +20,8 @@ from xrpl.utils import drops_to_xrp, ripple_time_to_datetime, xrp_to_drops
 from langchain_openai import ChatOpenAI
 from langchain.agents import create_openai_functions_agent
 from langchain.agents import AgentExecutor
+from typing import Literal
+
 
 
 
@@ -31,6 +33,11 @@ from langchain.agents import AgentExecutor
 load_dotenv()
 
 # print(os.getenv("PRIVATE_KEY"))
+
+
+
+NetworkType = Literal['MAINNET', 'TESTNET']
+
 
 ALLOWED_TRANSACTION = [
     "TrustSet",
@@ -45,19 +52,32 @@ UNAUTHORIZED_ACCOUNTS = [
     "r4MPsJ8SmQZGzk4dFxEoJHEF886bfX4rhu",
 ]
 
+NETWORKS = {
+    "MAINNET": {
+        "explorer": "https://livenet.xrpl.org/",
+        "rpc": "https://s2.ripple.com:51234/"
+    },
+    "TESTNET": {
+        "explorer": "https://testnet.xrpl.org/",
+        "rpc": "https://s.altnet.rippletest.net:51234/"
+    }
+}
 
 llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.1, streaming=True, verbose=True)
 
 
 @tool
-def check_acct_bal(user_address:str):
+def check_acct_bal(user_address:str, rpc:str):
     """
     Function to check a user account xrp balance
     """
-    client = JsonRpcClient('https://s.altnet.rippletest.net:51234/')
-    balance = get_balance(user_address, client)
-
-    return drops_to_xrp(str(balance))
+    try:
+        client = JsonRpcClient(rpc)
+        balance = get_balance(user_address, client)
+        return drops_to_xrp(str(balance))
+    except:
+        return ("return there was error ") 
+   
 
 @tool
 def send_slack_notification(address:str):
@@ -65,12 +85,12 @@ def send_slack_notification(address:str):
     return f"this user has send an unauthorized transaction to this account {address}"
 
 @tool
-def check_asset_trustline(address:str, asset_code:str, asset_issuer:str):
+def check_asset_trustline(address:str, asset_code:str, asset_issuer:str, rpc:str):
     """
     check if the provided address has a trustline to an asset
     """
 
-    client = JsonRpcClient("https://s.altnet.rippletest.net:51234/")
+    client = JsonRpcClient(rpc)
     c = AccountLines(account=address, ledger_index="validated")
 
     lines = client.request(c)
@@ -81,14 +101,14 @@ def check_asset_trustline(address:str, asset_code:str, asset_issuer:str):
     return False
 
 @tool
-def return_transaction_on_an_account(acct:str, limit:int):
+def return_transaction_on_an_account(acct:str, limit:int, rpc:str):
     """
     function that return list of transaction on an account, the limit is used limit the amount of transaction returned
     """
     try:
         
         transactions = []
-        client = JsonRpcClient("https://s.altnet.rippletest.net:51234/")
+        client = JsonRpcClient(rpc)
         tx = AccountTx(account=acct, limit=limit)
         req = client.request(tx)
         for tx in req.result["transactions"]:
@@ -109,7 +129,14 @@ def unauthorized_accounts():
     """
     return UNAUTHORIZED_ACCOUNTS
 
-
+@tool
+def get_network_json(network:NetworkType):
+    """
+    function that returned json rpc link
+    """
+    rpc = NETWORKS[network]['rpc']
+    return rpc
+    
 
 @tool
 def allowed_transaction():
@@ -190,7 +217,7 @@ def send_payment(address:str, amount:int):
     tx_response = submit_and_wait(my_tx_payment, client=client, wallet=keyPair)
     return tx_response
 
-register_tools = [check_acct_bal, check_asset_trustline, current_time_and_date, convert_ripple_time, send_slack_notification, send_payment, return_transaction_on_an_account, allowed_transaction, unauthorized_accounts, unauthorized_transactions]
+register_tools = [get_network_json, check_acct_bal, check_asset_trustline, current_time_and_date, convert_ripple_time, send_slack_notification, send_payment, return_transaction_on_an_account, allowed_transaction, unauthorized_accounts, unauthorized_transactions]
 
 # 
 
