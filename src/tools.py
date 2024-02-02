@@ -12,6 +12,7 @@ from datetime import date
 from xrpl.models.transactions import Payment
 from xrpl.wallet import Wallet
 from xrpl.transaction import submit_and_wait
+from xrpl.wallet import generate_faucet_wallet
 
 
 from xrpl.utils import drops_to_xrp, ripple_time_to_datetime, xrp_to_drops
@@ -19,23 +20,13 @@ from xrpl.utils import drops_to_xrp, ripple_time_to_datetime, xrp_to_drops
 from langchain_openai import ChatOpenAI
 from langchain.agents import create_openai_functions_agent
 from langchain.agents import AgentExecutor
-from typing import Literal
-
-
-
-
-
-
-
+from typing import Literal, Union
 
 
 load_dotenv()
 
-# print(os.getenv("PRIVATE_KEY"))
 
-
-
-NetworkType = Literal['MAINNET', 'TESTNET']
+RPCTYPE = Literal['MAINNET', 'TESTNET']
 
 
 ALLOWED_TRANSACTION = [
@@ -66,12 +57,12 @@ llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.1, streaming=True, verbose
 
 
 @tool
-def check_acct_bal(user_address:str, rpc:str):
+def check_acct_bal(user_address:str):
     """
     Function to check a user account xrp balance
     """
     try:
-        client = JsonRpcClient(rpc)
+        client = JsonRpcClient('https://s.altnet.rippletest.net:51234/')
         balance = get_balance(user_address, client)
         return drops_to_xrp(str(balance))
     except:
@@ -84,13 +75,13 @@ def send_slack_notification(address:str):
     return f"this user has send an unauthorized transaction to this account {address}"
 
 @tool
-def check_asset_trustline(address:str, asset_code:str, asset_issuer:str, rpc:str):
+def check_asset_trustline(address:str, asset_code:str, asset_issuer:str):
     """
     check if the provided address has a trustline to an asset
     """
     try:
         
-        client = JsonRpcClient(rpc)
+        client = JsonRpcClient('https://s.altnet.rippletest.net:51234/')
         c = AccountLines(account=address, ledger_index="validated")
 
         lines = client.request(c)
@@ -103,14 +94,14 @@ def check_asset_trustline(address:str, asset_code:str, asset_issuer:str, rpc:str
         return "there was an error with your query"
 
 @tool
-def return_transaction_on_an_account(acct:str, limit:int, rpc:str):
+def return_transaction_on_an_account(acct:str, limit:int):
     """
     function that return list of transaction on an account, the limit is used limit the amount of transaction returned
     """
     try:
         
         transactions = []
-        client = JsonRpcClient(rpc)
+        client = JsonRpcClient('https://s.altnet.rippletest.net:51234/')
         tx = AccountTx(account=acct, limit=limit)
         req = client.request(tx)
         for tx in req.result["transactions"]:
@@ -132,11 +123,11 @@ def unauthorized_accounts():
     return UNAUTHORIZED_ACCOUNTS
 
 @tool
-def get_network(network:NetworkType):
+def get_network(rpc:RPCTYPE):
     """
-    function to return specified network rpc, choices are between mainnet and testnet
+    function to return specified rpc for mainnet or testnet, choices are between mainnet and testnet. 
     """
-    rpc = NETWORKS[network]['rpc']
+    rpc = NETWORKS[rpc]['rpc']
     return rpc
     
 
@@ -210,6 +201,40 @@ def send_payment(address:str, amount:int):
     tx_response = submit_and_wait(my_tx_payment, client=client, wallet=keyPair)
     return tx_response
 
+@tool
+def generate_xrpl_keys():
+    """
+    function to generate xrpl keys,
+    It also the function that generate new wallets on xrpl
+    """
+    keyPair = Wallet.create()
+    return {
+        "classic_address": keyPair.classic_address,
+        "private_key": keyPair.seed
+    }
+    
+@tool
+def fund_testnet_account():
+    """
+    Function used to create a testnet account on the xrpl, this will create the wallet and automatically fund it 
+    """
+    fund_acct = generate_faucet_wallet(client=JsonRpcClient(get_network("TESTNET")), debug=True)
+    # print(fund_acct)
+    return {
+        "classic_address": fund_acct.classic_address,
+        "private":fund_acct.seed,
+        "public":fund_acct.public_key
+    }
+    
+    
+@tool
+def convert_drop_to_xrpl(drop_bal:Union[str, int]):
+    """
+    Every transaction on xrpl, will be returned as drop, this function is used to convert every balance from a query to the xrpl to an actual amount.
+    it takes a string as an argument
+    """
+    
+    return drops_to_xrp(drop_bal)
 
 
 register_tools = [
@@ -217,8 +242,11 @@ register_tools = [
     current_time_and_date, convert_ripple_time, send_slack_notification,
     send_payment, return_transaction_on_an_account, allowed_transaction, 
     unauthorized_accounts, unauthorized_transactions,
-    
+    generate_xrpl_keys,
+    fund_testnet_account,
+    convert_drop_to_xrpl
     ]
 
-# 
+
+# print(fund_testnet_account())
 
