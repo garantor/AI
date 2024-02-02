@@ -159,19 +159,19 @@ def unauthorized_transactions():
 # print(adc)
 
 
-@tool
-def subscribe_To_A_Single_Account(address:str):
-    """
-    function to subscribe to a single account on the blockchain and get every transaction this account is sending or receiving on the blockchain 
+# @tool
+# def subscribe_To_A_Single_Account(address:str):
+#     """
+#     function to subscribe to a single account on the blockchain and get every transaction this account is sending or receiving on the blockchain 
     
-    """
-    req = Subscribe(accounts=[address])
-    url = "wss://s.altnet.rippletest.net:51233/"
-    with WebsocketClient(url) as client:
-        client.send(req)
-        for message in client:
-            print(message)
-            # return message
+#     """
+#     req = Subscribe(accounts=[address])
+#     url = "wss://s.altnet.rippletest.net:51233/"
+#     with WebsocketClient(url) as client:
+#         client.send(req)
+#         for message in client:
+#             print(message)
+#             # return message
 
 
 
@@ -217,7 +217,6 @@ register_tools = [
     current_time_and_date, convert_ripple_time, send_slack_notification,
     send_payment, return_transaction_on_an_account, allowed_transaction, 
     unauthorized_accounts, unauthorized_transactions,
-    subscribe_To_A_Single_Account
     
     ]
 
