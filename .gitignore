@@ -4,4 +4,4 @@ lib/
 share/
 include/
 docuSummary.py
-
+__pycache__/

@@ -8,7 +8,6 @@ from xrpl.account import get_balance
 from xrpl.clients import JsonRpcClient
 from langchain.tools import tool
 from xrpl.models.requests.account_lines import AccountLines
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from datetime import date
 from xrpl.models.transactions import Payment
 from xrpl.wallet import Wallet
@@ -89,16 +88,19 @@ def check_asset_trustline(address:str, asset_code:str, asset_issuer:str, rpc:str
     """
     check if the provided address has a trustline to an asset
     """
+    try:
+        
+        client = JsonRpcClient(rpc)
+        c = AccountLines(account=address, ledger_index="validated")
 
-    client = JsonRpcClient(rpc)
-    c = AccountLines(account=address, ledger_index="validated")
+        lines = client.request(c)
+        for line in lines.result['lines']:
+            if line['account'] == asset_issuer and line['currency'] == asset_code:
+                return "this line was found ", line;
 
-    lines = client.request(c)
-    for line in lines.result['lines']:
-        if line['account'] == asset_issuer and line['currency'] == asset_code:
-            return "this line was found ", line;
-
-    return False
+        return False
+    except:
+        return "there was an error with your query"
 
 @tool
 def return_transaction_on_an_account(acct:str, limit:int, rpc:str):
@@ -130,9 +132,9 @@ def unauthorized_accounts():
     return UNAUTHORIZED_ACCOUNTS
 
 @tool
-def get_network_json(network:NetworkType):
+def get_network(network:NetworkType):
     """
-    function that returned json rpc link
+    function to return specified network rpc, choices are between mainnet and testnet
     """
     rpc = NETWORKS[network]['rpc']
     return rpc
@@ -157,7 +159,7 @@ def unauthorized_transactions():
 # print(adc)
 
 
-# @tool
+@tool
 def subscribe_To_A_Single_Account(address:str):
     """
     function to subscribe to a single account on the blockchain and get every transaction this account is sending or receiving on the blockchain 
@@ -169,18 +171,9 @@ def subscribe_To_A_Single_Account(address:str):
         client.send(req)
         for message in client:
             print(message)
-            return message
+            # return message
 
-prompt = ChatPromptTemplate.from_messages(
-    [
-        (
-            "system",
-            "You are very powerful assistant XRPL Blockchain assistant",
-        ),
-        ("user", "{input}"),
-        MessagesPlaceholder(variable_name="agent_scratchpad"),
-    ]
-)
+
 
 
 @tool
@@ -217,7 +210,16 @@ def send_payment(address:str, amount:int):
     tx_response = submit_and_wait(my_tx_payment, client=client, wallet=keyPair)
     return tx_response
 
-register_tools = [get_network_json, check_acct_bal, check_asset_trustline, current_time_and_date, convert_ripple_time, send_slack_notification, send_payment, return_transaction_on_an_account, allowed_transaction, unauthorized_accounts, unauthorized_transactions]
+
+
+register_tools = [
+    get_network, check_acct_bal, check_asset_trustline, 
+    current_time_and_date, convert_ripple_time, send_slack_notification,
+    send_payment, return_transaction_on_an_account, allowed_transaction, 
+    unauthorized_accounts, unauthorized_transactions,
+    subscribe_To_A_Single_Account
+    
+    ]
 
 # 
 
