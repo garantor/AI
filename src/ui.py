@@ -7,7 +7,7 @@ from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 
 
-
+#templates for creating prompt
 prompt = ChatPromptTemplate.from_messages(
     [
         (
@@ -18,11 +18,13 @@ prompt = ChatPromptTemplate.from_messages(
         MessagesPlaceholder(variable_name="agent_scratchpad"),
     ]
 )
+
+# openai function calling agent api
 agent = create_openai_functions_agent(llm, register_tools, prompt)
 
 
 
-
+#langchain agent executor
 agent_executor = AgentExecutor(agent=agent, tools=register_tools, verbose=True)
 def invokeAgent(user_input:str, *args:any):
     """
@@ -32,7 +34,7 @@ def invokeAgent(user_input:str, *args:any):
     return response["output"]
 
 
-
+# UI related
 demo = gr.Interface(
     fn=invokeAgent,
     inputs=["text", "slider"],

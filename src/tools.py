@@ -1,9 +1,8 @@
 
 import os
 from dotenv import load_dotenv
-from xrpl.clients import WebsocketClient
-from xrpl.models import Subscribe
 from xrpl.models.requests.account_tx import AccountTx
+from xrpl.models.transactions.transaction import Transaction
 from xrpl.account import get_balance
 from xrpl.clients import JsonRpcClient
 from langchain.tools import tool
@@ -16,10 +15,7 @@ from xrpl.wallet import generate_faucet_wallet
 
 
 from xrpl.utils import drops_to_xrp, ripple_time_to_datetime, xrp_to_drops
-# from langchain_community.chat_models import ChatOpenAI
 from langchain_openai import ChatOpenAI
-from langchain.agents import create_openai_functions_agent
-from langchain.agents import AgentExecutor
 from typing import Literal, Union
 
 
@@ -146,26 +142,6 @@ def unauthorized_transactions():
     """
     return UNAUTHORIZED_TRANSACTIONS
 
-# adc = check_transaction_details("rMb2MQbhwP8E4MihHLg6RkK7Tb2C4pRo3T")
-# print(adc)
-
-
-# @tool
-# def subscribe_To_A_Single_Account(address:str):
-#     """
-#     function to subscribe to a single account on the blockchain and get every transaction this account is sending or receiving on the blockchain 
-    
-#     """
-#     req = Subscribe(accounts=[address])
-#     url = "wss://s.altnet.rippletest.net:51233/"
-#     with WebsocketClient(url) as client:
-#         client.send(req)
-#         for message in client:
-#             print(message)
-#             # return message
-
-
-
 
 @tool
 def convert_ripple_time(xrpl_time:int):
@@ -236,7 +212,14 @@ def convert_drop_to_xrpl(drop_bal:Union[str, int]):
     
     return drops_to_xrp(drop_bal)
 
-
+# def transaction_hash_details(hash:str):
+#     """
+#     function to return details of a transaction
+#     """
+#     client = JsonRpcClient('https://s.altnet.rippletest.net:51234/')
+#     tx = Transaction(tx=hash)
+#     req = client.request(tx)
+#     return req
 register_tools = [
     get_network, check_acct_bal, check_asset_trustline, 
     current_time_and_date, convert_ripple_time, send_slack_notification,
